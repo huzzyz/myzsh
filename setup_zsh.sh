@@ -8,6 +8,18 @@ OH_MY_ZSH_DIR="$HOME/.oh-my-zsh"
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 ZSHRC_FILE="$HOME/.zshrc"
 
+# Function to check and install Zsh
+install_zsh() {
+    if command -v zsh >/dev/null 2>&1; then
+        echo "Zsh is already installed."
+    else
+        echo "Installing Zsh..."
+        sudo apt update -y
+        sudo apt install zsh -y
+        echo "Zsh installed successfully."
+    fi
+}
+
 # Function to install Oh My Zsh
 install_oh_my_zsh() {
     if [ -d "$OH_MY_ZSH_DIR" ]; then
@@ -72,7 +84,10 @@ install_neovim() {
 # Main script
 echo "Starting setup and configuration..."
 
-# Install Oh My Zsh if not installed
+# Install Zsh if not installed
+install_zsh
+
+# Install Oh My Zsh
 install_oh_my_zsh
 
 # Install plugins
@@ -85,8 +100,11 @@ configure_zshrc
 # Install Neovim
 install_neovim
 
-# Reload Zsh
-echo "Reloading Zsh..."
-source "$ZSHRC_FILE"
+# Change default shell to Zsh
+if [ "$SHELL" != "$(command -v zsh)" ]; then
+    echo "Changing default shell to Zsh..."
+    chsh -s "$(command -v zsh)"
+    echo "Default shell changed to Zsh. Please log out and log back in for changes to take effect."
+fi
 
 echo "Setup and configuration completed successfully."
