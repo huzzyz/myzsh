@@ -1,1 +1,4 @@
-setup_zsh.sh -  run 'curl -fsSl https://i.kalimi.net/zsh | sh'
+setup_zsh.sh
+```bash
+curl -fsSl https://i.kalimi.net/zsh | sh
+```
