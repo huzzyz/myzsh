@@ -61,8 +61,16 @@ EOL
     echo ".zshrc configured successfully."
 }
 
+# Function to install the latest version of Neovim
+install_neovim() {
+    echo "Installing the latest version of Neovim..."
+    curl -sL https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz \
+        | sudo tar -xzf - --strip-components=1 --overwrite -C /usr
+    echo "Neovim installed successfully."
+}
+
 # Main script
-echo "Starting Zsh configuration..."
+echo "Starting setup and configuration..."
 
 # Install Oh My Zsh if not installed
 install_oh_my_zsh
@@ -71,16 +79,14 @@ install_oh_my_zsh
 install_plugin "zsh-autosuggestions" "https://github.com/zsh-users/zsh-autosuggestions.git"
 install_plugin "zsh-syntax-highlighting" "https://github.com/zsh-users/zsh-syntax-highlighting.git"
 
-# 'z' is typically built into Oh My Zsh. Ensure it's enabled:
-if ! grep -q "plugins=(.*z.*)" "$ZSHRC_FILE"; then
-    echo "Adding 'z' plugin to .zshrc..."
-fi
-
 # Configure .zshrc
 configure_zshrc
+
+# Install Neovim
+install_neovim
 
 # Reload Zsh
 echo "Reloading Zsh..."
 source "$ZSHRC_FILE"
 
-echo "Zsh setup and configuration completed successfully."
+echo "Setup and configuration completed successfully."
