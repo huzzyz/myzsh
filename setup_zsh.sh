@@ -103,7 +103,7 @@ install_neovim
 # Change default shell to Zsh
 if [ "$SHELL" != "$(command -v zsh)" ]; then
     echo "Changing default shell to Zsh..."
-    chsh -s "$(command -v zsh)"
+    sudo chsh -s "$(command -v zsh)"
     echo "Default shell changed to Zsh. Please log out and log back in for changes to take effect."
 fi
 
