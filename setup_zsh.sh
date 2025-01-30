@@ -83,8 +83,35 @@ EOL
 # Function to install the latest version of Neovim
 install_neovim() {
     echo "Installing the latest version of Neovim..."
-    curl -sL https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz \
-        | sudo tar -xzf - --strip-components=1 --overwrite -C /usr
+
+    # Use a temporary directory
+    TMP_DIR="$HOME/tmp"
+    mkdir -p "$TMP_DIR"
+
+    # Fetch the latest release URL
+    echo "Fetching the latest Neovim release..."
+    LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -oP '"browser_download_url": "\K[^"]+nvim-linux64\.tar\.gz')
+
+    if [ -z "$LATEST_RELEASE_URL" ]; then
+        echo "Failed to fetch the latest release URL."
+        exit 1
+    fi
+
+    # Download Neovim
+    echo "Downloading Neovim from $LATEST_RELEASE_URL..."
+    curl -sL "$LATEST_RELEASE_URL" -o "$TMP_DIR/nvim-linux64.tar.gz"
+
+    # Check the downloaded file
+    echo "Checking downloaded file..."
+    file "$TMP_DIR/nvim-linux64.tar.gz"
+
+    # Extract Neovim
+    echo "Extracting Neovim..."
+    sudo tar -xzf "$TMP_DIR/nvim-linux64.tar.gz" --strip-components=1 --overwrite -C /usr
+
+    # Clean up
+    rm -f "$TMP_DIR/nvim-linux64.tar.gz"
+
     echo "Neovim installed successfully."
 }
 
