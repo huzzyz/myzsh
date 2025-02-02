@@ -15,7 +15,7 @@ install_zsh() {
     else
         echo "Installing Zsh..."
         sudo apt update -y
-        sudo apt install zsh -y
+        sudo apt install zsh git jq -y
         echo "Zsh installed successfully."
     fi
 }
