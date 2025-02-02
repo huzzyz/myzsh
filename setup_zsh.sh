@@ -15,7 +15,7 @@ install_zsh() {
     else
         echo "Installing Zsh..."
         sudo apt update -y
-        sudo apt install zsh curl jq -y
+        sudo apt install zsh -y
         echo "Zsh installed successfully."
     fi
 }
@@ -110,9 +110,12 @@ install_neovim() {
     echo "Detected architecture: $ARCH"
     echo "Looking for asset with filename: $FILENAME"
 
-    # Fetch the latest release info from GitHub
+    # Fetch the latest release info from GitHub using proper headers
     echo "Fetching latest release info from GitHub..."
-    LATEST_JSON=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest)
+    LATEST_JSON=$(curl -s \
+        -H "Accept: application/vnd.github.v3+json" \
+        -H "User-Agent: Neovim-Install-Script" \
+        https://api.github.com/repos/neovim/neovim/releases/latest)
 
     # Select the asset whose name exactly matches the expected filename.
     DOWNLOAD_URL=$(echo "$LATEST_JSON" | jq -r --arg filename "$FILENAME" '.assets[] | select(.name == $filename) | .browser_download_url')
