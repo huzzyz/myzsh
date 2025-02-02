@@ -1,42 +1,21 @@
 #!/bin/bash
 
-# Exit on error, undefined variable, and pipe failure
-set -euo pipefail
+# Exit on error
+set -e
 
 # Variables
 OH_MY_ZSH_DIR="$HOME/.oh-my-zsh"
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 ZSHRC_FILE="$HOME/.zshrc"
-TMP_DIR=$(mktemp -d)
-
-# Cleanup function to be called on script exit
-cleanup() {
-    rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Function to check and install a package if it's not already installed
-ensure_package_installed() {
-    if ! dpkg -l | grep -q "$1"; then
-        sudo apt update -y
-        sudo apt install -y "$1"
-    fi
-}
 
 # Function to check and install Zsh
 install_zsh() {
-    if command_exists zsh; then
+    if command -v zsh >/dev/null 2>&1; then
         echo "Zsh is already installed."
     else
         echo "Installing Zsh..."
-        ensure_package_installed zsh
-        ensure_package_installed git
-        ensure_package_installed jq
+        sudo apt update -y
+        sudo apt install zsh jq -y
         echo "Zsh installed successfully."
     fi
 }
@@ -107,7 +86,7 @@ install_neovim() {
 
     # Check for required commands
     for cmd in curl jq tar; do
-        if ! command_exists "$cmd"; then
+        if ! command -v "$cmd" >/dev/null 2>&1; then
             echo "Error: '$cmd' is not installed. Please install it and try again." >&2
             exit 1
         fi
@@ -148,27 +127,30 @@ install_neovim() {
 
     echo "Downloading Neovim from: $DOWNLOAD_URL"
     TARBALL=$(basename "$DOWNLOAD_URL")
-    curl -Lo "$TMP_DIR/$TARBALL" "$DOWNLOAD_URL"
+    curl -LO "$DOWNLOAD_URL"
 
     # Determine the top-level directory name inside the tarball
-    EXTRACTED_DIR=$(tar tzf "$TMP_DIR/$TARBALL" | head -n 1 | cut -d/ -f1)
+    EXTRACTED_DIR=$(tar tzf "$TARBALL" | head -n 1 | cut -d/ -f1)
     echo "Expected extracted directory: $EXTRACTED_DIR"
 
     echo "Extracting $TARBALL..."
-    tar xzf "$TMP_DIR/$TARBALL" -C "$TMP_DIR"
+    tar xzf "$TARBALL"
 
-    if [ ! -d "$TMP_DIR/$EXTRACTED_DIR" ]; then
-        echo "Error: Expected extracted directory '$TMP_DIR/$EXTRACTED_DIR' not found." >&2
+    if [ ! -d "$EXTRACTED_DIR" ]; then
+        echo "Error: Expected extracted directory '$EXTRACTED_DIR' not found." >&2
         exit 1
     fi
 
-    echo "Found extracted directory: $TMP_DIR/$EXTRACTED_DIR"
+    echo "Found extracted directory: $EXTRACTED_DIR"
 
     echo "Installing Neovim to /usr/local/$EXTRACTED_DIR..."
-    sudo mv -v "$TMP_DIR/$EXTRACTED_DIR" /usr/local/
+    sudo mv -v "$EXTRACTED_DIR" /usr/local/
 
     echo "Creating symlink /usr/local/bin/nvim..."
     sudo ln -sf /usr/local/"$EXTRACTED_DIR"/bin/nvim /usr/local/bin/nvim
+
+    echo "Cleaning up downloaded tarball..."
+    rm "$TARBALL"
 
     echo "Neovim installation complete."
     echo "Run 'nvim --version' to verify the installation."
@@ -177,7 +159,7 @@ install_neovim() {
 # Function to change the default shell to Zsh
 change_shell_to_zsh() {
     local zsh_path
-    zsh_path=$(command_exists zsh)
+    zsh_path=$(command -v zsh)
 
     if [ "$SHELL" != "$zsh_path" ]; then
         echo "Attempting to change default shell to Zsh..."
