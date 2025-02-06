@@ -1,0 +1,13 @@
+sudo systemctl stop systemd-networkd
+sudo systemctl disable systemd-networkd
+sudo systemctl stop cloud-init
+sudo systemctl disable cloud-init
+sudo systemctl stop cloud-init-local
+sudo systemctl disable cloud-init-local
+sudo systemctl stop cloud-config
+ 
+sudo systemctl disable cloud-config
+sudo systemctl stop cloud-final
+sudo systemctl disable cloud-final
+sudo systemctl stop systemd-networkd.socket
+sudo systemctl disable systemd-networkd.socket
