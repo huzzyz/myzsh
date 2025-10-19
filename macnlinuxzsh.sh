@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------
-# Universal ZSH + Neovim + NvChad Setup Script
+# Universal ZSH + Neovim + NvChad (Starter) Setup Script
 # Works on Debian/Ubuntu and macOS
 # ------------------------------------------------------------
 set -euo pipefail
@@ -51,7 +51,8 @@ if ! command -v zsh >/dev/null 2>&1; then
 fi
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
   log "Installing Oh My Zsh..."
-  RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  RUNZSH=no KEEP_ZSHRC=yes sh -c \
+    "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 fi
 success "Oh My Zsh installed."
 
@@ -78,12 +79,10 @@ success ".zshrc configured."
 log "Installing latest Neovim..."
 if [[ "$PLATFORM" == "macos" ]]; then
   brew install neovim
-  NVIM_CMD="/opt/homebrew/bin/nvim"
 else
   sudo mkdir -p /usr
   curl -sL https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
   | sudo tar -xzf - --strip-components=1 --overwrite -C /usr
-  NVIM_CMD="/usr/bin/nvim"
 fi
 
 if ! command -v nvim >/dev/null 2>&1; then
@@ -92,21 +91,22 @@ if ! command -v nvim >/dev/null 2>&1; then
 fi
 success "Neovim installed successfully."
 
-# ---------- NVCHAD ----------
-log "Installing NvChad..."
-if [[ "$PLATFORM" == "macos" ]]; then
-  NVIM_CONFIG_DIR="$HOME/Library/Application Support/nvim"
-else
-  NVIM_CONFIG_DIR="$HOME/.config/nvim"
-fi
+# ---------- NVCHAD (Starter) ----------
+log "Installing NvChad Starter..."
+NVIM_CONFIG_DIR="$HOME/.config/nvim"
 
 if [[ -d "$NVIM_CONFIG_DIR" ]]; then
   warn "Existing Neovim config detected — backing up..."
   mv "$NVIM_CONFIG_DIR" "${NVIM_CONFIG_DIR}.backup.$(date +%s)"
 fi
 
-git clone --depth 1 https://github.com/NvChad/NvChad "$NVIM_CONFIG_DIR"
-success "NvChad installed to $NVIM_CONFIG_DIR"
+git clone https://github.com/NvChad/starter "$NVIM_CONFIG_DIR"
+success "NvChad Starter cloned."
+
+# Run once to bootstrap plugins (non-interactive)
+log "Bootstrapping NvChad plugins..."
+nvim --headless "+Lazy! sync" +qa || true
+success "NvChad setup complete."
 
 # ---------- DEFAULT SHELL ----------
 if [[ "$SHELL" != *zsh ]]; then
