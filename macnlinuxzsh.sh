@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-#
-# Universal ZSH + Neovim setup script for Linux & macOS
-# Author: Ismail Kalimi (huzzyz)
-# -------------------------------------------------------
-
+# ------------------------------------------------------------
+# Universal ZSH + Neovim + NvChad Setup Script
+# Works on Debian/Ubuntu and macOS
+# ------------------------------------------------------------
 set -euo pipefail
 
 # ---------- COLORS ----------
@@ -12,17 +11,14 @@ GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
 BLUE="\033[0;34m"
 NC="\033[0m"
-
-# ---------- UTILITIES ----------
-log() { echo -e "${BLUE}[INFO]${NC} $*"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
-success() { echo -e "${GREEN}[OK]${NC} $*"; }
+log()      { echo -e "${BLUE}[INFO]${NC} $*"; }
+warn()     { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error()    { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+success()  { echo -e "${GREEN}[OK]${NC} $*"; }
 
 # ---------- DETECT OS ----------
 OS_TYPE="$(uname -s)"
 ARCH="$(uname -m)"
-
 if [[ "$OS_TYPE" == "Darwin" ]]; then
   PLATFORM="macos"
 elif [[ "$OS_TYPE" == "Linux" ]]; then
@@ -31,123 +27,99 @@ else
   error "Unsupported OS: $OS_TYPE"
   exit 1
 fi
-
 log "Detected platform: $PLATFORM ($ARCH)"
 
 # ---------- PREREQUISITES ----------
-log "Ensuring required tools are available..."
-if ! command -v curl >/dev/null 2>&1; then
-  error "curl not found — please install curl and rerun this script."
-  exit 1
-fi
-
-if ! command -v git >/dev/null 2>&1; then
-  error "git not found — please install git and rerun this script."
-  exit 1
-fi
-
-# ---------- INSTALL ZSH ----------
-if ! command -v zsh >/dev/null 2>&1; then
-  log "ZSH not found. Installing..."
-  if [[ "$PLATFORM" == "linux" ]]; then
-    sudo apt update && sudo apt install -y zsh
-  else
-    brew install zsh
-  fi
-  success "ZSH installed."
-else
-  success "ZSH already installed."
-fi
-
-# ---------- CONFIGURE .zshrc ----------
-ZSHRC="$HOME/.zshrc"
-log "Configuring .zshrc..."
-
-cat > "$ZSHRC" <<'EOF'
-# --- Default ZSH Configuration ---
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="agnoster"
-plugins=(git)
-
-# Custom aliases
-alias ll='ls -lh'
-alias la='ls -lah'
-alias gs='git status'
-alias v='nvim'
-
-# PATH adjustments for Homebrew (macOS)
-if [[ -d "/opt/homebrew/bin" ]]; then
-  export PATH="/opt/homebrew/bin:$PATH"
-fi
-
-# PATH adjustments for Linux
-if [[ -d "/usr/local/bin" ]]; then
-  export PATH="/usr/local/bin:$PATH"
-fi
-
-source $ZSH/oh-my-zsh.sh
-EOF
-
-success ".zshrc configured successfully with the Agnoster theme."
-
-# ---------- INSTALL OH-MY-ZSH ----------
-if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-  log "Installing Oh My Zsh..."
-  RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  success "Oh My Zsh installed."
-else
-  success "Oh My Zsh already installed."
-fi
-
-# ---------- INSTALL NEOVIM ----------
-log "Installing the latest version of Neovim..."
-
-if [[ "$PLATFORM" == "macos" ]]; then
+log "Installing prerequisites..."
+if [[ "$PLATFORM" == "linux" ]]; then
+  sudo apt update -y
+  sudo apt install -y curl git zsh tar sudo
+elif [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v brew >/dev/null 2>&1; then
     warn "Homebrew not found — installing..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
-  brew install neovim
-  success "Neovim installed via Homebrew."
-
-elif [[ "$PLATFORM" == "linux" ]]; then
-  TMP_DIR=$(mktemp -d)
-  NEOVIM_URL=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest \
-    | grep browser_download_url \
-    | grep "nvim-linux64.tar.gz" \
-    | cut -d '"' -f 4 | head -n 1)
-
-  if [[ -z "$NEOVIM_URL" ]]; then
-    error "Failed to fetch Neovim download URL. Installing via apt instead."
-    sudo apt update && sudo apt install -y neovim
-  else
-    log "Downloading Neovim from: $NEOVIM_URL"
-    curl -L "$NEOVIM_URL" -o "$TMP_DIR/nvim-linux64.tar.gz"
-    tar xzf "$TMP_DIR/nvim-linux64.tar.gz" -C "$TMP_DIR"
-    sudo rm -rf /usr/local/nvim-linux64
-    sudo mv "$TMP_DIR/nvim-linux64" /usr/local/
-    sudo ln -sf /usr/local/nvim-linux64/bin/nvim /usr/local/bin/nvim
-    success "Neovim installed successfully."
-  fi
-  rm -rf "$TMP_DIR"
+  brew install curl git zsh
 fi
+success "Base tools ready."
+
+# ---------- ZSH & OH-MY-ZSH ----------
+if ! command -v zsh >/dev/null 2>&1; then
+  log "Installing Zsh..."
+  [[ "$PLATFORM" == "linux" ]] && sudo apt install -y zsh || brew install zsh
+fi
+if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+  log "Installing Oh My Zsh..."
+  RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
+success "Oh My Zsh installed."
+
+# ---------- CONFIGURE .zshrc ----------
+log "Configuring ~/.zshrc..."
+cat > "$HOME/.zshrc" <<'EOF'
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="agnoster"
+plugins=(git)
+
+alias ll='ls -lh'
+alias la='ls -lah'
+alias v='nvim'
+
+# PATH fixes
+[[ -d "/usr/local/bin" ]] && export PATH="/usr/local/bin:$PATH"
+[[ -d "/opt/homebrew/bin" ]] && export PATH="/opt/homebrew/bin:$PATH"
+
+source $ZSH/oh-my-zsh.sh
+EOF
+success ".zshrc configured."
+
+# ---------- NEOVIM INSTALL ----------
+log "Installing latest Neovim..."
+if [[ "$PLATFORM" == "macos" ]]; then
+  brew install neovim
+  NVIM_CMD="/opt/homebrew/bin/nvim"
+else
+  sudo mkdir -p /usr
+  curl -sL https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
+  | sudo tar -xzf - --strip-components=1 --overwrite -C /usr
+  NVIM_CMD="/usr/bin/nvim"
+fi
+
+if ! command -v nvim >/dev/null 2>&1; then
+  error "Neovim installation failed."
+  exit 1
+fi
+success "Neovim installed successfully."
+
+# ---------- NVCHAD ----------
+log "Installing NvChad..."
+if [[ "$PLATFORM" == "macos" ]]; then
+  NVIM_CONFIG_DIR="$HOME/Library/Application Support/nvim"
+else
+  NVIM_CONFIG_DIR="$HOME/.config/nvim"
+fi
+
+if [[ -d "$NVIM_CONFIG_DIR" ]]; then
+  warn "Existing Neovim config detected — backing up..."
+  mv "$NVIM_CONFIG_DIR" "${NVIM_CONFIG_DIR}.backup.$(date +%s)"
+fi
+
+git clone --depth 1 https://github.com/NvChad/NvChad "$NVIM_CONFIG_DIR"
+success "NvChad installed to $NVIM_CONFIG_DIR"
 
 # ---------- DEFAULT SHELL ----------
 if [[ "$SHELL" != *zsh ]]; then
-  log "Setting ZSH as default shell..."
-  chsh -s "$(command -v zsh)" || warn "Could not change default shell automatically. Please run manually."
-else
-  success "ZSH is already your default shell."
+  log "Setting Zsh as default shell..."
+  chsh -s "$(command -v zsh)" || warn "Could not change default shell automatically."
 fi
 
 # ---------- FINAL CHECK ----------
-log "Verifying installations..."
+log "Verifying setup..."
 if command -v zsh >/dev/null && command -v nvim >/dev/null; then
-  success "ZSH and Neovim successfully installed and configured!"
+  success "✅ Zsh + Neovim + NvChad setup complete!"
+  echo -e "\nRestart terminal or run: ${GREEN}exec zsh${NC}"
 else
-  error "Something went wrong — please review the log above."
+  error "Something went wrong; please verify manually."
   exit 1
 fi
-
-log "Setup complete. Restart your terminal or run 'exec zsh' to start using it."
