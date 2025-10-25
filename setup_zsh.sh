@@ -260,61 +260,6 @@ install_nvchad() {
     fi
 }
 
-# Function to change the default shell to Zsh (improved version)
-change_shell_to_zsh() {
-    local zsh_path
-    zsh_path=$(command -v zsh)
-
-    if [ "$SHELL" != "$zsh_path" ]; then
-        echo "Current shell: $SHELL"
-        echo "Target shell: $zsh_path"
-        
-        # Check if the current user's shell entry in /etc/passwd needs changing
-        current_shell_in_passwd=$(getent passwd "$USER" | cut -d: -f7)
-        
-        if [ "$current_shell_in_passwd" != "$zsh_path" ]; then
-            echo "Attempting to change default shell to Zsh..."
-            echo "This may require your password for authentication."
-            
-            # Try changing the shell without sudo first
-            if chsh -s "$zsh_path" 2>/dev/null; then
-                echo "✓ Default shell changed to Zsh successfully."
-            else
-                echo "Standard chsh failed. Trying with sudo..."
-                if sudo chsh -s "$zsh_path" "$USER" 2>/dev/null; then
-                    echo "✓ Default shell changed to Zsh using sudo."
-                else
-                    echo "⚠ Failed to change the default shell through chsh."
-                    echo "Adding automatic Zsh startup to ~/.bashrc as fallback..."
-                    
-                    # Add a fallback to ~/.bashrc to start Zsh automatically
-                    if ! grep -q "exec zsh" ~/.bashrc 2>/dev/null; then
-                        echo "" >> ~/.bashrc
-                        echo "# Auto-start Zsh" >> ~/.bashrc
-                        echo 'if [ -t 1 ] && [ "$BASH" ] && [ "$0" != "/bin/zsh" ]; then' >> ~/.bashrc
-                        echo '    exec zsh' >> ~/.bashrc
-                        echo 'fi' >> ~/.bashrc
-                        echo "✓ Zsh will now start automatically when you open a new terminal."
-                    else
-                        echo "Zsh auto-start already configured in ~/.bashrc"
-                    fi
-                fi
-            fi
-        else
-            echo "✓ Zsh is already set as the default shell in /etc/passwd."
-        fi
-        
-        # Provide user instructions
-        echo ""
-        echo "IMPORTANT: To use Zsh immediately:"
-        echo "  1. Close and reopen your terminal, OR"
-        echo "  2. Run: exec zsh"
-        echo ""
-    else
-        echo "✓ Zsh is already the active shell."
-    fi
-}
-
 # Main script
 echo "Starting setup and configuration..."
 
