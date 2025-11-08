@@ -25,12 +25,12 @@ log "Detected platform: $PLATFORM"
 
 # ---------- Install Prerequisites ----------
 if [[ "$PLATFORM" == "linux" ]]; then
-  log "Installing required packages (curl, git, zsh, neovim)..."
+  log "Installing required packages (curl, git, zsh, neovim, tar)..."
   if ! command -v sudo >/dev/null 2>&1; then
     error "sudo not installed. Please install sudo first."
     exit 1
   fi
-  sudo -v   # Prompt for password early
+  sudo -v   # prompt early
   sudo apt update -y
   sudo apt install -y curl git zsh neovim tar
 elif [[ "$PLATFORM" == "macos" ]]; then
@@ -57,7 +57,7 @@ else
   nvim --headless "+Lazy! sync" +qa || true
 fi
 
-# Optional: integrate your personal custom layer
+# Optional personal NvChad layer
 CUSTOM_URL="https://github.com/huzzyz/nvchad-custom"
 if [[ ! -d "$NVIM_DIR/lua/custom" ]]; then
   log "Adding personal NvChad config layer..."
@@ -66,7 +66,7 @@ else
   log "Custom NvChad layer already exists — skipping."
 fi
 
-# Ensure Neovim is set as default editor
+# ---------- Set default editor ----------
 if ! grep -q "export EDITOR=" "$HOME/.zshrc" 2>/dev/null; then
   {
     echo ""
@@ -133,12 +133,24 @@ fi
 # ---------- Change Default Shell ----------
 log "Setting Zsh as the default shell..."
 
-# Ensure password prompt works even if run via curl | bash
-exec </dev/tty || true
-
-if ! sudo -v; then
-  error "Authentication failed or cancelled."
-  exit 1
+# --- Robust sudo password handling ---
+if ! sudo -v 2>/dev/null; then
+  if [[ -t 0 ]]; then
+    sudo -v
+  else
+    echo "[WARN] Non-interactive shell detected. Using askpass for sudo..."
+    export SUDO_ASKPASS=$(mktemp)
+    cat <<'EOF' >"$SUDO_ASKPASS"
+#!/usr/bin/env bash
+exec </dev/tty
+echo -n "Password: " >&2
+read -rs pass
+echo "$pass"
+EOF
+    chmod 700 "$SUDO_ASKPASS"
+    sudo -A true || { echo "[ERR] Sudo authentication failed."; rm -f "$SUDO_ASKPASS"; exit 1; }
+    rm -f "$SUDO_ASKPASS"
+  fi
 fi
 
 ZSH_PATH="$(command -v zsh)"
