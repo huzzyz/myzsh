@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ===========================================================
-# macnlinuxzsh.sh — Universal ZSH Setup for macOS & Linux
-# Author: huzzyz (modified for robust sudo + shell change)
+# macnlinuxzsh.sh — Universal ZSH + NVIM Setup (macOS & Linux)
+# Author: huzzyz (enhanced for robust sudo + shell handling)
 # ===========================================================
 
 set -euo pipefail
@@ -26,14 +26,14 @@ log "Detected platform: $PLATFORM"
 
 # ---------- Install Prerequisites ----------
 if [[ "$PLATFORM" == "linux" ]]; then
-  log "Installing required packages (curl, git, zsh)..."
+  log "Installing required packages (curl, git, zsh, nvim)..."
   if ! command -v sudo >/dev/null 2>&1; then
     error "sudo not installed. Please install sudo first."
     exit 1
   fi
   sudo -v  # Force password prompt early
   sudo apt update -y
-  sudo apt install -y curl git zsh
+  sudo apt install -y curl git zsh neovim
 elif [[ "$PLATFORM" == "macos" ]]; then
   log "Checking Homebrew..."
   if ! command -v brew >/dev/null 2>&1; then
@@ -41,9 +41,44 @@ elif [[ "$PLATFORM" == "macos" ]]; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
-  brew install curl git zsh
+  brew install curl git zsh neovim
 fi
 success "Base tools ready."
+
+# ---------- Configure Neovim ----------
+log "Configuring Neovim..."
+
+mkdir -p "$HOME/.config/nvim"
+
+# Add minimal init.lua if missing
+if [[ ! -f "$HOME/.config/nvim/init.lua" && ! -f "$HOME/.config/nvim/init.vim" ]]; then
+  cat <<'EOF' > "$HOME/.config/nvim/init.lua"
+-- Minimal Neovim configuration
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.expandtab = true
+vim.opt.termguicolors = true
+vim.cmd [[syntax on]]
+EOF
+  success "Created minimal Neovim config at ~/.config/nvim/init.lua"
+else
+  warn "Neovim config already exists — leaving it as is."
+fi
+
+# Set default editor environment variables
+if ! grep -q "export EDITOR=" "$HOME/.zshrc" 2>/dev/null; then
+  {
+    echo ""
+    echo "# Default editor"
+    echo "export EDITOR=nvim"
+    echo "export VISUAL=nvim"
+  } >> "$HOME/.zshrc"
+  success "Added EDITOR and VISUAL variables to .zshrc"
+else
+  warn "EDITOR already set — skipping."
+fi
 
 # ---------- Install Oh My Zsh ----------
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
@@ -86,12 +121,14 @@ export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="agnoster"
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-completions)
 source $ZSH/oh-my-zsh.sh
+
+export EDITOR=nvim
+export VISUAL=nvim
 EOF
+  success ".zshrc configured."
 else
   warn ".zshrc already configured — leaving existing configuration."
 fi
-
-success ".zshrc configured."
 
 # ---------- Change Default Shell ----------
 log "Setting Zsh as the default shell..."
