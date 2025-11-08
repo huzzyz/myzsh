@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ===========================================================
-# macnlinuxzsh.sh — Universal ZSH + NVIM Setup (macOS & Linux)
-# Author: huzzyz (enhanced for robust sudo + shell handling)
+# macnlinuxzsh.sh — Universal ZSH + NvChad Setup (macOS & Linux)
+# Author: huzzyz — Final Production Version
 # ===========================================================
 
 set -euo pipefail
 
 # ---------- Helper Functions ----------
-log()    { printf "\033[1;34m[INFO]\033[0m %s\n" "$*"; }
-warn()   { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
-error()  { printf "\033[1;31m[ERR ]\033[0m %s\n" "$*"; }
-success(){ printf "\033[1;32m[DONE]\033[0m %s\n" "$*"; }
+log()    { printf "\033[1;34m[INFO]\033[0m %s\n" "$*\n"; }
+warn()   { printf "\033[1;33m[WARN]\033[0m %s\n" "$*\n"; }
+error()  { printf "\033[1;31m[ERR ]\033[0m %s\n" "$*\n"; }
+success(){ printf "\033[1;32m[DONE]\033[0m %s\n" "$*\n"; }
 
 # ---------- Detect OS ----------
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -21,19 +21,18 @@ else
   error "Unsupported OS: $OSTYPE"
   exit 1
 fi
-
 log "Detected platform: $PLATFORM"
 
 # ---------- Install Prerequisites ----------
 if [[ "$PLATFORM" == "linux" ]]; then
-  log "Installing required packages (curl, git, zsh, nvim)..."
+  log "Installing required packages (curl, git, zsh, neovim)..."
   if ! command -v sudo >/dev/null 2>&1; then
     error "sudo not installed. Please install sudo first."
     exit 1
   fi
-  sudo -v  # Force password prompt early
+  sudo -v   # Prompt for password early
   sudo apt update -y
-  sudo apt install -y curl git zsh neovim
+  sudo apt install -y curl git zsh neovim tar
 elif [[ "$PLATFORM" == "macos" ]]; then
   log "Checking Homebrew..."
   if ! command -v brew >/dev/null 2>&1; then
@@ -45,29 +44,29 @@ elif [[ "$PLATFORM" == "macos" ]]; then
 fi
 success "Base tools ready."
 
-# ---------- Configure Neovim ----------
-log "Configuring Neovim..."
+# ---------- Install NvChad ----------
+log "Setting up NvChad (Neovim configuration)..."
 
-mkdir -p "$HOME/.config/nvim"
-
-# Add minimal init.lua if missing
-if [[ ! -f "$HOME/.config/nvim/init.lua" && ! -f "$HOME/.config/nvim/init.vim" ]]; then
-  cat <<'EOF' > "$HOME/.config/nvim/init.lua"
--- Minimal Neovim configuration
-vim.opt.number = true
-vim.opt.relativenumber = true
-vim.opt.tabstop = 2
-vim.opt.shiftwidth = 2
-vim.opt.expandtab = true
-vim.opt.termguicolors = true
-vim.cmd [[syntax on]]
-EOF
-  success "Created minimal Neovim config at ~/.config/nvim/init.lua"
+NVIM_DIR="$HOME/.config/nvim"
+if [[ -d "$NVIM_DIR" ]]; then
+  warn "Existing Neovim config found — skipping NvChad clone."
 else
-  warn "Neovim config already exists — leaving it as is."
+  git clone --depth 1 https://github.com/NvChad/NvChad "$NVIM_DIR"
+  success "NvChad cloned into ~/.config/nvim"
+  log "Installing NvChad plugins (headless)..."
+  nvim --headless "+Lazy! sync" +qa || true
 fi
 
-# Set default editor environment variables
+# Optional: integrate your personal custom layer
+CUSTOM_URL="https://github.com/huzzyz/nvchad-custom"
+if [[ ! -d "$NVIM_DIR/lua/custom" ]]; then
+  log "Adding personal NvChad config layer..."
+  git clone --depth 1 "$CUSTOM_URL" "$NVIM_DIR/lua/custom" || warn "Custom config repo not found or failed to clone."
+else
+  log "Custom NvChad layer already exists — skipping."
+fi
+
+# Ensure Neovim is set as default editor
 if ! grep -q "export EDITOR=" "$HOME/.zshrc" 2>/dev/null; then
   {
     echo ""
@@ -91,7 +90,7 @@ else
   log "Oh My Zsh already installed — skipping."
 fi
 
-# ---------- Install Plugins ----------
+# ---------- Install Zsh Plugins ----------
 ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}
 
 install_plugin() {
@@ -122,6 +121,7 @@ ZSH_THEME="agnoster"
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-completions)
 source $ZSH/oh-my-zsh.sh
 
+# Default editor
 export EDITOR=nvim
 export VISUAL=nvim
 EOF
@@ -133,10 +133,9 @@ fi
 # ---------- Change Default Shell ----------
 log "Setting Zsh as the default shell..."
 
-# Ensure the prompt appears even if run via curl | bash
+# Ensure password prompt works even if run via curl | bash
 exec </dev/tty || true
 
-# Validate sudo and prompt for password
 if ! sudo -v; then
   error "Authentication failed or cancelled."
   exit 1
@@ -161,5 +160,5 @@ success "Setup complete! 🎉"
 echo "Restart your terminal or log out/in for changes to take effect."
 echo
 echo "Run 'zsh' now to start your new shell immediately."
+echo "Then open Neovim with 'nvim' to enjoy NvChad!"
 echo
-
