@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ===========================================================
 # macnlinuxzsh.sh — Universal ZSH + NvChad Setup (macOS & Linux)
-# Author: huzzyz — Final Production Version
+# Author: huzzyz — Neovim GitHub Release Version
 # ===========================================================
 
 set -euo pipefail
@@ -24,29 +24,54 @@ fi
 log "Detected platform: $PLATFORM"
 
 # ---------- Install Prerequisites ----------
+log "Installing required base packages (curl, git, zsh, tar)..."
+if ! command -v sudo >/dev/null 2>&1; then
+  error "sudo not installed. Please install sudo first."
+  exit 1
+fi
+sudo -v   # prompt early
+
 if [[ "$PLATFORM" == "linux" ]]; then
-  log "Installing required packages (curl, git, zsh, neovim, tar)..."
-  if ! command -v sudo >/dev/null 2>&1; then
-    error "sudo not installed. Please install sudo first."
-    exit 1
-  fi
-  sudo -v   # prompt early
   sudo apt update -y
-  sudo apt install -y curl git zsh neovim tar
+  sudo apt install -y curl git zsh tar
 elif [[ "$PLATFORM" == "macos" ]]; then
-  log "Checking Homebrew..."
   if ! command -v brew >/dev/null 2>&1; then
     warn "Homebrew not found — installing..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
-  brew install curl git zsh neovim
+  brew install curl git zsh gnu-tar
 fi
 success "Base tools ready."
 
+# ---------- Install Latest Neovim from GitHub ----------
+log "Installing latest Neovim release from GitHub..."
+
+if [[ "$PLATFORM" == "linux" ]]; then
+  # Detect CPU arch
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64) NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz" ;;
+    aarch64|arm64) NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-arm64.tar.gz" ;;
+    *) error "Unsupported architecture: $ARCH"; exit 1 ;;
+  esac
+
+  curl -sL "$NVIM_URL" | sudo tar -xzf - --strip-components=1 --overwrite -C /usr
+  success "Neovim installed to /usr/bin/nvim"
+
+elif [[ "$PLATFORM" == "macos" ]]; then
+  NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-macos-arm64.tar.gz"
+  TEMP_DIR=$(mktemp -d)
+  curl -sL "$NVIM_URL" | tar -xzf - -C "$TEMP_DIR"
+  sudo rm -rf /usr/local/nvim
+  sudo mv "$TEMP_DIR"/nvim* /usr/local/nvim
+  sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+  rm -rf "$TEMP_DIR"
+  success "Neovim installed to /usr/local/bin/nvim"
+fi
+
 # ---------- Install NvChad ----------
 log "Setting up NvChad (Neovim configuration)..."
-
 NVIM_DIR="$HOME/.config/nvim"
 if [[ -d "$NVIM_DIR" ]]; then
   warn "Existing Neovim config found — skipping NvChad clone."
@@ -57,7 +82,6 @@ else
   nvim --headless "+Lazy! sync" +qa || true
 fi
 
-# Optional personal NvChad layer
 CUSTOM_URL="https://github.com/huzzyz/nvchad-custom"
 if [[ ! -d "$NVIM_DIR/lua/custom" ]]; then
   log "Adding personal NvChad config layer..."
@@ -66,7 +90,7 @@ else
   log "Custom NvChad layer already exists — skipping."
 fi
 
-# ---------- Set default editor ----------
+# ---------- Default Editor ----------
 if ! grep -q "export EDITOR=" "$HOME/.zshrc" 2>/dev/null; then
   {
     echo ""
@@ -79,7 +103,7 @@ else
   warn "EDITOR already set — skipping."
 fi
 
-# ---------- Install Oh My Zsh ----------
+# ---------- Oh My Zsh ----------
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
   log "Installing Oh My Zsh..."
   export RUNZSH=no
@@ -90,9 +114,8 @@ else
   log "Oh My Zsh already installed — skipping."
 fi
 
-# ---------- Install Zsh Plugins ----------
+# ---------- Zsh Plugins ----------
 ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}
-
 install_plugin() {
   local repo=$1 dest=$2
   if [[ ! -d "$dest" ]]; then
@@ -103,17 +126,14 @@ install_plugin() {
     git -C "$dest" pull --quiet || true
   fi
 }
-
 install_plugin https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"
 install_plugin https://github.com/zsh-users/zsh-syntax-highlighting "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
 install_plugin https://github.com/zsh-users/zsh-completions "${ZSH_CUSTOM}/plugins/zsh-completions"
-
 success "Zsh plugins installed."
 
-# ---------- Update .zshrc ----------
+# ---------- .zshrc Configuration ----------
 log "Configuring .zshrc..."
 ZSHRC="$HOME/.zshrc"
-
 if ! grep -q "plugins=(" "$ZSHRC" 2>/dev/null; then
   cat <<'EOF' > "$ZSHRC"
 export ZSH="$HOME/.oh-my-zsh"
@@ -130,10 +150,8 @@ else
   warn ".zshrc already configured — leaving existing configuration."
 fi
 
-# ---------- Change Default Shell ----------
+# ---------- Default Shell ----------
 log "Setting Zsh as the default shell..."
-
-# --- Robust sudo password handling ---
 if ! sudo -v 2>/dev/null; then
   if [[ -t 0 ]]; then
     sudo -v
@@ -158,7 +176,6 @@ if [[ -z "$ZSH_PATH" ]]; then
   error "Zsh binary not found!"
   exit 1
 fi
-
 if sudo -E chsh -s "$ZSH_PATH" "$USER"; then
   success "Default shell changed to Zsh for user $USER"
 else
